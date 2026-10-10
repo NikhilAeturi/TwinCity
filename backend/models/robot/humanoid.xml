@@ -1,0 +1,221 @@
+<mujoco model="robotwin_humanoid">
+  <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="Euler" iterations="50" solver="Newton">
+    <flag contact="enable" energy="enable"/>
+  </option>
+
+  <default>
+    <joint limited="true" damping="1.5" armature="0.02" stiffness="0"/>
+    <geom contype="1" conaffinity="1" friction="1.2 0.05 0.001" solref="0.01 1" solimp="0.9 0.95 0.001"/>
+    <position kp="150" kv="15"/>
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.1 0.12 0.18" rgb2="0.02 0.03 0.05" width="512" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="0.15 0.17 0.22" rgb2="0.1 0.12 0.15"/>
+    <material name="grid_mat" texture="grid" texrepeat="5 5" reflectance="0.1"/>
+    <material name="robot_chassis" rgba="0.85 0.88 0.92 1.0" specular="0.5" shininess="0.8"/>
+    <material name="robot_joint" rgba="0.15 0.18 0.22 1.0" specular="0.3" shininess="0.5"/>
+    <material name="robot_accent" rgba="0.0 0.65 0.95 1.0" emission="0.3"/>
+    <material name="gripper_pad" rgba="0.9 0.4 0.1 1.0" specular="0.2"/>
+  </asset>
+
+  <worldbody>
+    <light directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 0 4" dir="0 0 -1"/>
+    <light directional="false" diffuse="0.4 0.4 0.4" pos="2 2 3"/>
+
+    <!-- Dynamic Mocap Target for Right Hand End-Effector -->
+    <body name="target_mocap_r" mocap="true" pos="0.35 -0.2 0.9">
+      <geom type="sphere" size="0.025" rgba="0 0.8 1 0.5" contype="0" conaffinity="0"/>
+      <site name="mocap_target_site" size="0.01" rgba="1 1 1 1"/>
+    </body>
+
+    <!-- Humanoid Robot Kinematic Tree -->
+    <body name="pelvis" pos="0 0 0.98">
+      <freejoint name="root_freejoint"/>
+      <geom name="pelvis_geom" type="box" size="0.12 0.09 0.08" material="robot_joint"/>
+      <site name="pelvis_site" pos="0 0 0" size="0.01"/>
+
+      <!-- Torso & Upper Body -->
+      <body name="torso" pos="0 0 0.12">
+        <joint name="spine_pitch" type="hinge" axis="0 1 0" range="-25 35" damping="3.0"/>
+        <joint name="spine_yaw" type="hinge" axis="0 0 1" range="-45 45" damping="3.0"/>
+        <geom name="torso_geom" type="box" size="0.13 0.11 0.16" pos="0 0 0.08" material="robot_chassis"/>
+        <geom name="torso_chest_accent" type="box" size="0.08 0.02 0.06" pos="0.07 0 0.12" material="robot_accent"/>
+
+        <!-- Head & Sensors -->
+        <body name="head" pos="0 0 0.28">
+          <joint name="neck_pitch" type="hinge" axis="0 1 0" range="-30 40"/>
+          <joint name="neck_yaw" type="hinge" axis="0 0 1" range="-70 70"/>
+          <geom name="head_geom" type="sphere" size="0.09" pos="0 0 0.04" material="robot_joint"/>
+          <geom name="visor_geom" type="box" size="0.06 0.07 0.03" pos="0.06 0 0.05" material="robot_accent"/>
+          <site name="head_camera_site" pos="0.08 0 0.05" size="0.01"/>
+        </body>
+
+        <!-- Right Arm Assembly (7-DoF + Gripper) -->
+        <body name="right_shoulder" pos="0 -0.18 0.18">
+          <joint name="r_shoulder_pitch" type="hinge" axis="0 1 0" range="-120 70" damping="2.0"/>
+          <joint name="r_shoulder_roll" type="hinge" axis="1 0 0" range="-90 30" damping="2.0"/>
+          <joint name="r_shoulder_yaw" type="hinge" axis="0 0 1" range="-90 90" damping="2.0"/>
+          <geom name="r_shoulder_geom" type="sphere" size="0.05" material="robot_joint"/>
+
+          <body name="right_upper_arm" pos="0 -0.05 -0.12">
+            <geom name="r_upper_arm_geom" type="cylinder" size="0.038 0.09" pos="0 0 0" material="robot_chassis"/>
+
+            <body name="right_forearm" pos="0 0 -0.12">
+              <joint name="r_elbow" type="hinge" axis="0 1 0" range="0 135" damping="1.5"/>
+              <geom name="r_forearm_geom" type="cylinder" size="0.032 0.09" pos="0 0 -0.05" material="robot_chassis"/>
+
+              <body name="right_wrist" pos="0 0 -0.16">
+                <joint name="r_wrist_pitch" type="hinge" axis="0 1 0" range="-70 70" damping="1.0"/>
+                <joint name="r_wrist_yaw" type="hinge" axis="0 0 1" range="-90 90" damping="1.0"/>
+                <joint name="r_wrist_roll" type="hinge" axis="1 0 0" range="-90 90" damping="1.0"/>
+                <geom name="r_wrist_geom" type="sphere" size="0.03" material="robot_joint"/>
+                <site name="right_hand" pos="0 0 -0.06" size="0.015" rgba="0 1 0 1"/>
+
+                <!-- Right Gripper (Parallel Jaw Mechanism) -->
+                <body name="right_gripper_palm" pos="0 0 -0.04">
+                  <geom name="r_palm_geom" type="box" size="0.03 0.04 0.02" material="robot_joint"/>
+
+                  <!-- Left Finger -->
+                  <body name="r_finger_left" pos="0 0.025 -0.03">
+                    <joint name="r_gripper_finger_l" type="slide" axis="0 1 0" range="-0.025 0.005" damping="5.0"/>
+                    <geom name="r_finger_l_geom" type="box" size="0.015 0.008 0.03" material="gripper_pad" friction="2.5 0.1 0.002"/>
+                  </body>
+
+                  <!-- Right Finger -->
+                  <body name="r_finger_right" pos="0 -0.025 -0.03">
+                    <joint name="r_gripper_finger_r" type="slide" axis="0 1 0" range="-0.005 0.025" damping="5.0"/>
+                    <geom name="r_finger_r_geom" type="box" size="0.015 0.008 0.03" material="gripper_pad" friction="2.5 0.1 0.002"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+
+        <!-- Left Arm Assembly (7-DoF + Gripper) -->
+        <body name="left_shoulder" pos="0 0.18 0.18">
+          <joint name="l_shoulder_pitch" type="hinge" axis="0 1 0" range="-120 70" damping="2.0"/>
+          <joint name="l_shoulder_roll" type="hinge" axis="1 0 0" range="-30 90" damping="2.0"/>
+          <joint name="l_shoulder_yaw" type="hinge" axis="0 0 1" range="-90 90" damping="2.0"/>
+          <geom name="l_shoulder_geom" type="sphere" size="0.05" material="robot_joint"/>
+
+          <body name="left_upper_arm" pos="0 0.05 -0.12">
+            <geom name="l_upper_arm_geom" type="cylinder" size="0.038 0.09" pos="0 0 0" material="robot_chassis"/>
+
+            <body name="left_forearm" pos="0 0 -0.12">
+              <joint name="l_elbow" type="hinge" axis="0 1 0" range="0 135" damping="1.5"/>
+              <geom name="l_forearm_geom" type="cylinder" size="0.032 0.09" pos="0 0 -0.05" material="robot_chassis"/>
+
+              <body name="left_wrist" pos="0 0 -0.16">
+                <joint name="l_wrist_pitch" type="hinge" axis="0 1 0" range="-70 70" damping="1.0"/>
+                <joint name="l_wrist_yaw" type="hinge" axis="0 0 1" range="-90 90" damping="1.0"/>
+                <joint name="l_wrist_roll" type="hinge" axis="1 0 0" range="-90 90" damping="1.0"/>
+                <geom name="l_wrist_geom" type="sphere" size="0.03" material="robot_joint"/>
+                <site name="left_hand" pos="0 0 -0.06" size="0.015" rgba="0 1 0 1"/>
+
+                <body name="left_gripper_palm" pos="0 0 -0.04">
+                  <geom name="l_palm_geom" type="box" size="0.03 0.04 0.02" material="robot_joint"/>
+                  <body name="l_finger_left" pos="0 0.025 -0.03">
+                    <joint name="l_gripper_finger_l" type="slide" axis="0 1 0" range="-0.025 0.005" damping="5.0"/>
+                    <geom name="l_finger_l_geom" type="box" size="0.015 0.008 0.03" material="gripper_pad" friction="2.5 0.1 0.002"/>
+                  </body>
+                  <body name="l_finger_right" pos="0 -0.025 -0.03">
+                    <joint name="l_gripper_finger_r" type="slide" axis="0 1 0" range="-0.005 0.025" damping="5.0"/>
+                    <geom name="l_finger_r_geom" type="box" size="0.015 0.008 0.03" material="gripper_pad" friction="2.5 0.1 0.002"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+
+      <!-- Right Leg (Lower Body) -->
+      <body name="right_hip" pos="0 -0.09 -0.08">
+        <joint name="r_hip_yaw" type="hinge" axis="0 0 1" range="-30 30" damping="4.0"/>
+        <joint name="r_hip_roll" type="hinge" axis="1 0 0" range="-30 30" damping="4.0"/>
+        <joint name="r_hip_pitch" type="hinge" axis="0 1 0" range="-60 40" damping="4.0"/>
+        <geom name="r_thigh_geom" type="cylinder" size="0.045 0.16" pos="0 0 -0.18" material="robot_chassis"/>
+
+        <body name="right_knee" pos="0 0 -0.36">
+          <joint name="r_knee" type="hinge" axis="0 1 0" range="0 90" damping="4.0"/>
+          <geom name="r_shin_geom" type="cylinder" size="0.04 0.16" pos="0 0 -0.18" material="robot_chassis"/>
+
+          <body name="right_ankle" pos="0 0 -0.36">
+            <joint name="r_ankle_pitch" type="hinge" axis="0 1 0" range="-40 30" damping="3.0"/>
+            <joint name="r_ankle_roll" type="hinge" axis="1 0 0" range="-20 20" damping="3.0"/>
+            <geom name="r_foot_geom" type="box" size="0.1 0.05 0.02" pos="0.04 0 -0.03" material="robot_joint"/>
+            <site name="r_foot_site" pos="0.04 0 -0.04" size="0.01"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- Left Leg (Lower Body) -->
+      <body name="left_hip" pos="0 0.09 -0.08">
+        <joint name="l_hip_yaw" type="hinge" axis="0 0 1" range="-30 30" damping="4.0"/>
+        <joint name="l_hip_roll" type="hinge" axis="1 0 0" range="-30 30" damping="4.0"/>
+        <joint name="l_hip_pitch" type="hinge" axis="0 1 0" range="-60 40" damping="4.0"/>
+        <geom name="l_thigh_geom" type="cylinder" size="0.045 0.16" pos="0 0 -0.18" material="robot_chassis"/>
+
+        <body name="left_knee" pos="0 0 -0.36">
+          <joint name="l_knee" type="hinge" axis="0 1 0" range="0 90" damping="4.0"/>
+          <geom name="l_shin_geom" type="cylinder" size="0.04 0.16" pos="0 0 -0.18" material="robot_chassis"/>
+
+          <body name="left_ankle" pos="0 0 -0.36">
+            <joint name="l_ankle_pitch" type="hinge" axis="0 1 0" range="-40 30" damping="3.0"/>
+            <joint name="l_ankle_roll" type="hinge" axis="1 0 0" range="-20 20" damping="3.0"/>
+            <geom name="l_foot_geom" type="box" size="0.1 0.05 0.02" pos="0.04 0 -0.03" material="robot_joint"/>
+            <site name="l_foot_site" pos="0.04 0 -0.04" size="0.01"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- Upper Body & Torso Actuators -->
+    <position name="act_spine_pitch" joint="spine_pitch" kp="300" kv="25" ctrlrange="-25 35"/>
+    <position name="act_spine_yaw" joint="spine_yaw" kp="200" kv="20" ctrlrange="-45 45"/>
+    <position name="act_neck_pitch" joint="neck_pitch" kp="60" kv="6" ctrlrange="-30 40"/>
+    <position name="act_neck_yaw" joint="neck_yaw" kp="60" kv="6" ctrlrange="-70 70"/>
+
+    <!-- Right Arm Actuators -->
+    <position name="act_r_shoulder_pitch" joint="r_shoulder_pitch" kp="180" kv="18" ctrlrange="-120 70"/>
+    <position name="act_r_shoulder_roll" joint="r_shoulder_roll" kp="180" kv="18" ctrlrange="-90 30"/>
+    <position name="act_r_shoulder_yaw" joint="r_shoulder_yaw" kp="150" kv="15" ctrlrange="-90 90"/>
+    <position name="act_r_elbow" joint="r_elbow" kp="160" kv="16" ctrlrange="0 135"/>
+    <position name="act_r_wrist_pitch" joint="r_wrist_pitch" kp="80" kv="8" ctrlrange="-70 70"/>
+    <position name="act_r_wrist_yaw" joint="r_wrist_yaw" kp="80" kv="8" ctrlrange="-90 90"/>
+    <position name="act_r_wrist_roll" joint="r_wrist_roll" kp="80" kv="8" ctrlrange="-90 90"/>
+    <position name="act_r_gripper_l" joint="r_gripper_finger_l" kp="250" kv="25" ctrlrange="-0.025 0.005"/>
+    <position name="act_r_gripper_r" joint="r_gripper_finger_r" kp="250" kv="25" ctrlrange="-0.005 0.025"/>
+
+    <!-- Left Arm Actuators -->
+    <position name="act_l_shoulder_pitch" joint="l_shoulder_pitch" kp="180" kv="18" ctrlrange="-120 70"/>
+    <position name="act_l_shoulder_roll" joint="l_shoulder_roll" kp="180" kv="18" ctrlrange="-30 90"/>
+    <position name="act_l_shoulder_yaw" joint="l_shoulder_yaw" kp="150" kv="15" ctrlrange="-90 90"/>
+    <position name="act_l_elbow" joint="l_elbow" kp="160" kv="16" ctrlrange="0 135"/>
+    <position name="act_l_wrist_pitch" joint="l_wrist_pitch" kp="80" kv="8" ctrlrange="-70 70"/>
+    <position name="act_l_wrist_yaw" joint="l_wrist_yaw" kp="80" kv="8" ctrlrange="-90 90"/>
+    <position name="act_l_wrist_roll" joint="l_wrist_roll" kp="80" kv="8" ctrlrange="-90 90"/>
+    <position name="act_l_gripper_l" joint="l_gripper_finger_l" kp="250" kv="25" ctrlrange="-0.025 0.005"/>
+    <position name="act_l_gripper_r" joint="l_gripper_finger_r" kp="250" kv="25" ctrlrange="-0.005 0.025"/>
+
+    <!-- Legs Actuators -->
+    <position name="act_r_hip_yaw" joint="r_hip_yaw" kp="250" kv="25" ctrlrange="-30 30"/>
+    <position name="act_r_hip_roll" joint="r_hip_roll" kp="250" kv="25" ctrlrange="-30 30"/>
+    <position name="act_r_hip_pitch" joint="r_hip_pitch" kp="300" kv="30" ctrlrange="-60 40"/>
+    <position name="act_r_knee" joint="r_knee" kp="350" kv="35" ctrlrange="0 90"/>
+    <position name="act_r_ankle_pitch" joint="r_ankle_pitch" kp="200" kv="20" ctrlrange="-40 30"/>
+    <position name="act_r_ankle_roll" joint="r_ankle_roll" kp="200" kv="20" ctrlrange="-20 20"/>
+
+    <position name="act_l_hip_yaw" joint="l_hip_yaw" kp="250" kv="25" ctrlrange="-30 30"/>
+    <position name="act_l_hip_roll" joint="l_hip_roll" kp="250" kv="25" ctrlrange="-30 30"/>
+    <position name="act_l_hip_pitch" joint="l_hip_pitch" kp="300" kv="30" ctrlrange="-60 40"/>
+    <position name="act_l_knee" joint="l_knee" kp="350" kv="35" ctrlrange="0 90"/>
+    <position name="act_l_ankle_pitch" joint="l_ankle_pitch" kp="200" kv="20" ctrlrange="-40 30"/>
+    <position name="act_l_ankle_roll" joint="l_ankle_roll" kp="200" kv="20" ctrlrange="-20 20"/>
+  </actuator>
+</mujoco>
