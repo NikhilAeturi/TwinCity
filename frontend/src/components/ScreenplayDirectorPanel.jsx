@@ -96,6 +96,29 @@ export default function ScreenplayDirectorPanel({
       };
     }
 
+    const isCrash = p.includes('crash') || p.includes('collision') || p.includes('collide') || p.includes('hit') || p.includes('smash') || p.includes('pileup') || p.includes('t-bone') || p.includes('wreck') || p.includes('accident');
+    const isSports = p.includes('sport') || p.includes('supercar') || p.includes('fast car') || p.includes('race');
+    const isSuv = p.includes('suv') || p.includes('jeep');
+
+    if (!isCrash) {
+      const chosenCar = isPolice
+        ? { name: 'Metropolitan Police Interceptor', file: 'vehicle_police.glb', tag: 'Cruiser' }
+        : isSports
+        ? { name: 'Apex Track Sportscar', file: 'vehicle_sportscar.glb', tag: 'Performance Supercar' }
+        : isSuv
+        ? { name: 'Tactical Full-Size SUV', file: 'vehicle_suv.glb', tag: 'All-Terrain 4x4' }
+        : isTruck
+        ? { name: 'Freight Logistics Box Truck', file: 'vehicle_truck.glb', tag: 'Commercial Logistics' }
+        : { name: 'Sapphire Executive Sedan', file: 'vehicle_sedan.glb', tag: 'Passenger Sedan' };
+
+      return {
+        type: 'street_drive',
+        label: 'Scenic Avenue Street Drive',
+        physics: 'Continuous Avenue Corridor Drive • Full Street Distance (130m) • Steady 40 MPH Cruise',
+        models: [chosenCar]
+      };
+    }
+
     return {
       type: 'two_car_crash',
       label: 'Two-Vehicle Collision',

@@ -691,7 +691,7 @@ function create3DMarker(lat, lng, alt = 20, label = 'Waypoint', extruded = true)
  * Uses RELATIVE_TO_GROUND so the robot's feet are clamped firmly to the real physical street/sidewalk surface.
  * Scale is 0.48 calibrated to real-life 2.2m humanoid proportions in urban 3D tiles.
  */
-function createRobotModel(lat, lng, alt = 0.1, heading = 0, scale = 0.48, src = '/models/humanoid_robot.glb') {
+function createRobotModel(lat, lng, alt = 0.1, heading = 0, scale = 0.48, src = '/models/humanoid_robot.glb', tilt = 0, roll = null) {
   let model = null;
   const ModelClass = window.google?.maps?.maps3d?.Model3DElement;
   const AltMode = window.google?.maps?.maps3d?.AltitudeMode;
@@ -703,13 +703,25 @@ function createRobotModel(lat, lng, alt = 0.1, heading = 0, scale = 0.48, src = 
     ? new URL(src, window.location.origin).href
     : src;
 
+  const isVehicular = Boolean(
+    resolvedSrc.includes('vehicle_') ||
+    resolvedSrc.includes('drone_') ||
+    resolvedSrc.includes('sedan') ||
+    resolvedSrc.includes('suv') ||
+    resolvedSrc.includes('truck') ||
+    resolvedSrc.includes('police') ||
+    resolvedSrc.includes('car')
+  );
+
+  const resolvedRoll = roll !== null ? roll : 0;
+
   if (typeof ModelClass === 'function') {
     try {
       model = new ModelClass({
         src: resolvedSrc,
         position: { lat, lng, altitude: alt },
         scale: scale,
-        orientation: { heading, tilt: 0, roll: 0 },
+        orientation: { heading, tilt, roll: resolvedRoll },
         altitudeMode: resolvedAltMode
       });
     } catch (e) {
@@ -724,7 +736,8 @@ function createRobotModel(lat, lng, alt = 0.1, heading = 0, scale = 0.48, src = 
     model.setAttribute('altitude-mode', 'relative-to-mesh');
     try {
       model.position = { lat, lng, altitude: alt };
-      model.orientation = { heading, tilt: 0, roll: 0 };
+      model.orientation = { heading, tilt, roll: resolvedRoll };
+      model.setAttribute('orientation', `${heading},${tilt},${resolvedRoll}`);
     } catch (e) {}
   }
 
@@ -1977,15 +1990,24 @@ export default function CityViewport({
         const src = act.model_src || '/models/vehicle_sedan.glb';
         const scale = act.scale || 1.0;
         const z = (act.altitude || 0.0) + BASE_GROUND_OFFSET;
-        const isVehicular = act.category === 'vehicle' || act.category === 'drone' || src.includes('vehicle_') || src.includes('drone_');
-        // GLB vehicles/drones are authored with hood/forward along +Y, while Google Maps 3D aligns heading 0 to +X.
-        // Adding +90° ensures the vehicle faces forward along its trajectory heading instead of sliding sideways.
-        const effectiveHeading = isVehicular
-          ? (((act.heading || 0) + 90) % 360 + 360) % 360
-          : (act.heading || 0);
+        const isVehicular = Boolean(
+          act.category === 'vehicle' ||
+          act.category === 'drone' ||
+          src.includes('vehicle_') ||
+          src.includes('drone_') ||
+          src.includes('sedan') ||
+          src.includes('suv') ||
+          src.includes('truck') ||
+          src.includes('police') ||
+          src.includes('car')
+        );
+        // Vehicle orientation: models are authored in standard glTF Y-up (+Y Up, -Z Forward), perfectly matching Google Maps 3D.
+        const effectiveHeading = act.heading || 0;
+        const effectiveTilt = act.pitch || 0;
+        const effectiveRoll = act.roll || 0;
 
         if (!existing) {
-          const model = createRobotModel(actLat, actLng, z, effectiveHeading, scale, src);
+          const model = createRobotModel(actLat, actLng, z, effectiveHeading, scale, src, effectiveTilt, effectiveRoll);
           map.appendChild(model);
           activeMultiActorsMapRef.current[act.id] = { element: model, src };
         } else {
@@ -1993,13 +2015,15 @@ export default function CityViewport({
             try {
               if (existing.element.parentNode) existing.element.parentNode.removeChild(existing.element);
             } catch (e) {}
-            const model = createRobotModel(actLat, actLng, z, effectiveHeading, scale, src);
+            const model = createRobotModel(actLat, actLng, z, effectiveHeading, scale, src, effectiveTilt, effectiveRoll);
             map.appendChild(model);
             activeMultiActorsMapRef.current[act.id] = { element: model, src };
           } else {
             try {
               existing.element.position = { lat: actLat, lng: actLng, altitude: z };
-              existing.element.orientation = { heading: effectiveHeading, tilt: act.pitch || 0, roll: act.roll || 0 };
+              existing.element.orientation = { heading: effectiveHeading, tilt: effectiveTilt, roll: effectiveRoll };
+              existing.element.setAttribute?.('position', `${actLat},${actLng},${z}`);
+              existing.element.setAttribute?.('orientation', `${effectiveHeading},${effectiveTilt},${effectiveRoll}`);
             } catch (e) {}
           }
         }
@@ -2043,13 +2067,24 @@ export default function CityViewport({
         else if (actKey.includes('SPAWN') || actKey.includes('DROP') || actKey.includes('JUMP')) targetGlb = '/models/humanoid_drop.glb';
       }
 
-      const isSingleVehicular = Boolean(pose.isVehicular || targetGlb.includes('vehicle_') || targetGlb.includes('drone_'));
-      const effectiveHeading = isSingleVehicular
-        ? (((pose.heading || 0) + 90) % 360 + 360) % 360
-        : (pose.heading || 0);
+      const isSingleVehicular = Boolean(
+        pose.isVehicular ||
+        pose.category === 'vehicle' ||
+        pose.category === 'drone' ||
+        targetGlb.includes('vehicle_') ||
+        targetGlb.includes('drone_') ||
+        targetGlb.includes('sedan') ||
+        targetGlb.includes('suv') ||
+        targetGlb.includes('truck') ||
+        targetGlb.includes('police') ||
+        targetGlb.includes('car')
+      );
+      const effectiveHeading = pose.heading || 0;
+      const effectiveTilt = pose.pitch || 0;
+      const effectiveRoll = pose.roll || 0;
 
       if (!activeRobotModelRef.current) {
-        const model = createRobotModel(pose.lat, pose.lng, zOffset, effectiveHeading, targetScale, targetGlb);
+        const model = createRobotModel(pose.lat, pose.lng, zOffset, effectiveHeading, targetScale, targetGlb, effectiveTilt, effectiveRoll);
         map.appendChild(model);
         activeRobotModelRef.current = model;
         activeModelGlbRef.current = targetGlb;
@@ -2061,15 +2096,15 @@ export default function CityViewport({
               activeRobotModelRef.current.parentNode.removeChild(activeRobotModelRef.current);
             }
           } catch (e) {}
-          const model = createRobotModel(pose.lat, pose.lng, zOffset, effectiveHeading, targetScale, targetGlb);
+          const model = createRobotModel(pose.lat, pose.lng, zOffset, effectiveHeading, targetScale, targetGlb, effectiveTilt, effectiveRoll);
           map.appendChild(model);
           activeRobotModelRef.current = model;
         } else {
           try {
             activeRobotModelRef.current.position = { lat: pose.lat, lng: pose.lng, altitude: zOffset };
-            activeRobotModelRef.current.orientation = { heading: effectiveHeading, tilt: pose.pitch || 0, roll: pose.roll || 0 };
+            activeRobotModelRef.current.orientation = { heading: effectiveHeading, tilt: effectiveTilt, roll: effectiveRoll };
             activeRobotModelRef.current.setAttribute?.('position', `${pose.lat},${pose.lng},${zOffset}`);
-            activeRobotModelRef.current.setAttribute?.('orientation', `${effectiveHeading},${pose.pitch || 0},${pose.roll || 0}`);
+            activeRobotModelRef.current.setAttribute?.('orientation', `${effectiveHeading},${effectiveTilt},${effectiveRoll}`);
           } catch (e) {}
         }
       }

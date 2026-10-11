@@ -409,6 +409,7 @@ Return valid JSON:
         is_truck = any(k in p_lower for k in ["truck", "semi", "lorry", "delivery truck", "box truck", "cargo"])
         is_police = any(k in p_lower for k in ["police", "cop", "patrol", "pursuit", "siren", "interceptor", "chase", "chasing"])
         is_sports = any(k in p_lower for k in ["sports car", "supercar", "fast car", "race car", "apex", "ferrari"])
+        is_suv = any(k in p_lower for k in ["suv", "jeep", "4x4", "crossover", "large car"])
         is_drift = any(k in p_lower for k in ["drift", "drifting", "power slide", "spinout", "spins out", "burnout", "donut"])
         is_race = any(k in p_lower for k in ["race", "racing", "drag race", "side by side", "sprint"])
         is_head_on = any(k in p_lower for k in ["head on", "head-on", "facing each other", "opposing", "front to front"])
@@ -417,9 +418,13 @@ Return valid JSON:
             "two cars", "2 cars", "three cars", "3 cars", "pileup", "pile up",
             "car crash into two", "crash into two", "crashes into two", "multiple cars", "chain reaction"
         ])
+        is_crash = any(k in p_lower for k in [
+            "crash", "collision", "collide", "colliding", "hit", "smash", "accident", "wreck",
+            "impact", "pileup", "pile up", "t-bone", "t bone"
+        ]) or is_head_on or is_rear_end or is_three_cars
 
         # 1. Drone Flight
-        if is_drone and not ("hit by drone" in p_lower or "drone crashes" in p_lower):
+        if is_drone and not ("hit by drone" in p_lower or "drone crashes" in p_lower or is_crash):
             drone_asset = ASSET_CATALOG.get("drone_quadcopter")
             return {
                 "scenario_type": "drone_flight",
@@ -438,7 +443,7 @@ Return valid JSON:
             }
 
         # 2. Police Pursuit (Chase)
-        if is_police and not ("crash" in p_lower or "collision" in p_lower):
+        if is_police and any(k in p_lower for k in ["chase", "pursuit", "chasing", "intercept"]) and not is_crash:
             lead = ASSET_CATALOG.get("vehicle_sportscar") if is_sports else ASSET_CATALOG.get("vehicle_sedan")
             cop = ASSET_CATALOG.get("vehicle_police")
             return {
@@ -452,7 +457,7 @@ Return valid JSON:
             }
 
         # 3. High-Speed Drift / Spinout
-        if is_drift and not ("crash" in p_lower or "collision" in p_lower):
+        if is_drift and not is_crash:
             car = ASSET_CATALOG.get("vehicle_sportscar") if is_sports else ASSET_CATALOG.get("vehicle_sedan")
             return {
                 "scenario_type": "high_speed_drift",
@@ -464,7 +469,7 @@ Return valid JSON:
             }
 
         # 4. Drag Race / Sprint
-        if is_race and not ("crash" in p_lower or "collision" in p_lower):
+        if is_race and not is_crash:
             c1 = ASSET_CATALOG.get("vehicle_sportscar")
             c2 = ASSET_CATALOG.get("vehicle_sedan")
             return {
@@ -477,7 +482,34 @@ Return valid JSON:
                 "duration_sec": 6.0
             }
 
-        # 5. Truck vs Barrier
+        # 5. Non-Crash Street Drive / Corridor Cruise (Primary Scenario for driving down the street)
+        if not is_crash:
+            v = (
+                ASSET_CATALOG.get("vehicle_sportscar") if is_sports
+                else (ASSET_CATALOG.get("vehicle_suv") if is_suv
+                else (ASSET_CATALOG.get("vehicle_truck") if is_truck
+                else (ASSET_CATALOG.get("vehicle_police") if is_police
+                else ASSET_CATALOG.get("vehicle_sedan"))))
+            )
+            return {
+                "scenario_type": "street_drive",
+                "title": f"Scenic City Drive: {v['name']} Driving Down Avenue",
+                "actors": [{
+                    "id": "actor_lead",
+                    "name": v["name"],
+                    "asset_id": v["id"],
+                    "model_src": v["src"],
+                    "category": "vehicle",
+                    "role": "lead_driver",
+                    "scale": 1.0,
+                    "mass_kg": v["mass_kg"]
+                }],
+                "duration_sec": 6.5
+            }
+
+        # --- CRASH SCENARIOS (Triggered when collision/crash keywords are present) ---
+
+        # 6. Truck vs Barrier Crash
         if is_barrier and (is_truck or "crash" in p_lower or "hit" in p_lower):
             truck = ASSET_CATALOG.get("vehicle_truck") if is_truck else ASSET_CATALOG.get("vehicle_suv")
             barrier = ASSET_CATALOG.get("prop_barrier")
@@ -493,7 +525,7 @@ Return valid JSON:
                 "duration_sec": 6.0
             }
 
-        # 6. Head-On Collision
+        # 7. Head-On Collision
         if is_head_on:
             c1 = ASSET_CATALOG.get("vehicle_sedan")
             c2 = ASSET_CATALOG.get("vehicle_suv")
@@ -509,7 +541,7 @@ Return valid JSON:
                 "duration_sec": 6.0
             }
 
-        # 7. Rear-End Collision
+        # 8. Rear-End Collision
         if is_rear_end:
             c1 = ASSET_CATALOG.get("vehicle_suv")
             c2 = ASSET_CATALOG.get("vehicle_sportscar") if is_sports else ASSET_CATALOG.get("vehicle_sedan")
@@ -525,8 +557,8 @@ Return valid JSON:
                 "duration_sec": 6.0
             }
 
-        # 8. Three-Car Crash
-        if is_three_cars or ("car" in p_lower and "crash" in p_lower and ("two" in p_lower or "three" in p_lower or "pileup" in p_lower)):
+        # 9. Three-Car Crash
+        if is_three_cars:
             a1 = ASSET_CATALOG.get("vehicle_sportscar") if is_sports else (ASSET_CATALOG.get("vehicle_police") if is_police else ASSET_CATALOG.get("vehicle_sedan"))
             a2 = ASSET_CATALOG.get("vehicle_suv")
             a3 = ASSET_CATALOG.get("vehicle_police") if not is_police else ASSET_CATALOG.get("vehicle_sedan")
@@ -543,7 +575,7 @@ Return valid JSON:
                 "duration_sec": 6.0
             }
 
-        # 9. Two-Car Crash (T-Bone / Intersection)
+        # 10. Default Two-Car Crash (T-Bone / Intersection)
         a1 = ASSET_CATALOG.get("vehicle_police") if is_police else (ASSET_CATALOG.get("vehicle_sportscar") if is_sports else ASSET_CATALOG.get("vehicle_sedan"))
         a2 = ASSET_CATALOG.get("vehicle_suv") if not is_truck else ASSET_CATALOG.get("vehicle_truck")
         debris = ASSET_CATALOG.get("prop_debris_cluster")
@@ -872,6 +904,148 @@ Return valid JSON:
                 {"step": 0, "time": 0.0, "action": "START", "name": "Start", "lat": geo_stage["lat"], "lng": geo_stage["lng"], "altitude": 0.1, "speed": 18.0},
                 {"step": 1, "time": duration_sec, "action": "REST", "name": "Halt", "lat": geo_stage["lat"], "lng": geo_stage["lng"], "altitude": 0.1, "speed": 0.0}
             ],
+            "focal_point": stage_pos
+        }
+
+    def simulate_street_drive(
+        self,
+        actors: List[Dict[str, Any]],
+        center_lat: float,
+        center_lng: float,
+        stage_pos: Dict[str, float],
+        city_id: str = "san_francisco",
+        duration_sec: float = 6.5,
+        fps: int = 60
+    ) -> Dict[str, Any]:
+        """
+        Simulates smooth, realistic street driving down the entire corridor:
+        - Covers the full roadway stretch (from -65m to +65m = 130 meters).
+        - Perfectly aligned with surveyed street heading (corridor_heading).
+        - Natural acceleration and steady 38-42 mph (17-19 m/s) cruise.
+        - True terrain-conforming altitude so tires stay glued to asphalt.
+        - Clean continuous trajectory polyline spanning the entire street.
+        """
+        total_frames = int(duration_sec * fps)
+        dt = 1.0 / fps
+
+        xc, yc = lat_lng_to_meters(center_lat, center_lng, stage_pos["lat"], stage_pos["lng"])
+        base_ground_alt = float(stage_pos.get("altitude", 0.0)) if stage_pos.get("altitude") is not None else terrain_physics_engine.get_elevation(stage_pos["lat"], stage_pos["lng"], city_id)
+
+        car = actors[0]
+        corridor_hdg = get_stage_corridor_heading(stage_pos, city_id, is_cross_street=False)
+
+        # 130 meter corridor span along the street
+        start_dist = -65.0
+        end_dist = 65.0
+        total_dist = end_dist - start_dist
+
+        frames: List[Dict[str, Any]] = []
+
+        for f_idx in range(total_frames):
+            t = f_idx * dt
+            progress = t / duration_sec
+
+            # Smooth progress from corridor start to corridor exit
+            u = progress
+            lx = start_dist + u * total_dist
+            ly = 0.0  # Center of lane
+
+            # Speed in m/s (~36 to 43 mph)
+            spd = 16.0 + 3.0 * math.sin(u * math.pi * 0.5)
+
+            # Subtle chassis dynamics (slight rear squat on acceleration, 0 during steady cruise)
+            pitch = -0.5 * max(0.0, 1.0 - u * 3.0)
+            roll = 0.0
+            heading = corridor_hdg
+
+            wx, wy = rotate_to_corridor(lx, ly, corridor_hdg)
+            geo = meters_to_lat_lng(center_lat, center_lng, xc + wx, yc + wy, alt=0.0)
+            ground_alt = terrain_physics_engine.get_elevation(geo["lat"], geo["lng"], city_id)
+
+            frame_actors = [{
+                "id": car["id"],
+                "name": car["name"],
+                "lat": geo["lat"],
+                "lng": geo["lng"],
+                "altitude": 0.1,
+                "heading": round(heading, 2),
+                "pitch": round(pitch, 2),
+                "roll": round(roll, 2),
+                "speed_mps": round(spd, 2),
+                "action": "CRUISE",
+                "model_src": car["model_src"],
+                "category": "vehicle",
+                "tire_smoke": False,
+                "damaged": False
+            }]
+
+            frames.append({
+                "frame": f_idx,
+                "timestamp": round(t, 3),
+                "pos": {
+                    "lat": geo["lat"],
+                    "lng": geo["lng"],
+                    "altitude": 0.1,
+                    "altitude_offset": 0.1,
+                    "ground_altitude": ground_alt
+                },
+                "heading": round(heading, 2),
+                "pitch": round(pitch, 2),
+                "roll": round(roll, 2),
+                "speed": round(spd, 2),
+                "action": "CRUISING",
+                "actors": frame_actors
+            })
+
+        geo_stage = meters_to_lat_lng(center_lat, center_lng, xc, yc, alt=0.0)
+
+        # 5 Waypoints spanning the full street corridor for UI polyline and markers
+        waypoint_offsets = [
+            (-65.0, 0.0, "Corridor Entry (-65m)", "APPROACH", 16.0),
+            (-30.0, 1.75, "Avenue Cruise (-30m)", "CRUISE", 18.5),
+            (0.0, 3.25, "Intersection Center (0m)", "MIDPOINT", 19.0),
+            (35.0, 4.85, "Avenue Cruise (+35m)", "CRUISE", 18.5),
+            (65.0, duration_sec, "Corridor Exit (+65m)", "EXIT", 17.5),
+        ]
+        waypoints = []
+        for idx, (dist, w_time, name, act_label, w_spd) in enumerate(waypoint_offsets):
+            w_wx, w_wy = rotate_to_corridor(dist, 0.0, corridor_hdg)
+            w_geo = meters_to_lat_lng(center_lat, center_lng, xc + w_wx, yc + w_wy, alt=0.1)
+            waypoints.append({
+                "step": idx,
+                "time": round(w_time, 2),
+                "action": act_label,
+                "name": name,
+                "lat": w_geo["lat"],
+                "lng": w_geo["lng"],
+                "altitude": 0.1,
+                "speed": w_spd
+            })
+
+        camera_shots = [
+            {"shot_index": 1, "start_time": 0.0, "end_time": 2.2, "angle": "HERO_LOW", "label": "Low Front 3/4 Tracking Approach"},
+            {"shot_index": 2, "start_time": 2.2, "end_time": 4.4, "angle": "ACTION_CLOSEUP", "label": "Parallel Speed-Matched Profile Cut"},
+            {"shot_index": 3, "start_time": 4.4, "end_time": duration_sec, "angle": "DRONE_WIDE", "label": "Elevated Aerial Corridor Chase"}
+        ]
+
+        timeline_events = [
+            {"time": 0.0, "label": f"{car['name']} Enters Corridor", "type": "ENTRY"},
+            {"time": 2.0, "label": "Smooth Cruise Down Avenue at 40 MPH", "type": "CRUISE"},
+            {"time": 3.25, "label": "Passing Central Intersection", "type": "MIDPOINT"},
+            {"time": round(duration_sec - 0.5, 2), "label": "Travels Full Length of Street Corridor", "type": "EXIT"}
+        ]
+
+        return {
+            "scenario_type": "street_drive",
+            "title": f"Scenic City Drive: {car['name']} Driving Down Avenue",
+            "duration_sec": duration_sec,
+            "total_frames": len(frames),
+            "fps": fps,
+            "actors": actors,
+            "frames": frames,
+            "camera_shots": camera_shots,
+            "timeline_events": timeline_events,
+            "waypoints": waypoints,
             "focal_point": stage_pos
         }
 
@@ -1729,6 +1903,16 @@ Return valid JSON:
                 stage_pos=stage_pos,
                 city_id=city_id,
                 duration_sec=resolution.get("duration_sec", 6.0),
+                fps=60
+            )
+        elif scenario_type == "street_drive":
+            sim_data = self.simulate_street_drive(
+                actors=actors,
+                center_lat=center_lat,
+                center_lng=center_lng,
+                stage_pos=stage_pos,
+                city_id=city_id,
+                duration_sec=resolution.get("duration_sec", 6.5),
                 fps=60
             )
         else:

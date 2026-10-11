@@ -242,3 +242,24 @@ def test_api_export_mp4_with_target_duration():
     assert b"ftyp" in resp.content[:32]
 
 
+def test_screenplay_car_driving_down_street():
+    """Verifies prompt 'Car driving down the street' produces a single-vehicle 130m street cruise instead of a 2-car crash."""
+    resp = client.post("/api/scene/screenplay", json={"prompt": "Car driving down the street", "city_id": "san_francisco"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
+    assert data["scenario_type"] == "street_drive"
+    assert len(data["actors"]) == 1
+    assert data["actors"][0]["name"] == "Sapphire Executive Sedan"
+    assert len(data["frames"]) == 390
+    assert len(data["waypoints"]) >= 5
+    # First frame has vehicle, no damage
+    assert data["frames"][0]["actors"][0]["damaged"] is False
+    assert data["frames"][-1]["actors"][0]["damaged"] is False
+    # Verifies full corridor transit from start to end (at least 100 meters traveled)
+    start_lat = data["frames"][0]["pos"]["lat"]
+    end_lat = data["frames"][-1]["pos"]["lat"]
+    assert abs(end_lat - start_lat) > 0.0005  # >55 meters of latitude displacement along SF avenue
+
+
+

@@ -692,13 +692,10 @@ def build_cargo_crate():
     return combined
 
 def export_asset(mesh, filename):
-    """Exports a trimesh to binary GLB format, converting from MuJoCo Z-up to standard glTF 2.0 Y-up coordinates so vehicles sit horizontally on their wheels and props stand upright."""
+    """Exports a trimesh to binary GLB format in native ENU / Google Maps 3D coordinate system (Z-up, Y-forward, X-right) so vehicles sit horizontally on their wheels and props stand upright."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     out_path = os.path.join(OUTPUT_DIR, filename)
-    # Convert Z-up (MuJoCo/robotics) to Y-up (glTF 2.0 / Three.js / Google Maps 3D)
-    mesh_export = mesh.copy()
-    mesh_export.apply_transform(rot_x(-90))
-    data = mesh_export.export(file_type="glb")
+    data = mesh.export(file_type="glb")
     with open(out_path, "wb") as f:
         f.write(data)
     print(f"Generated {filename}: {len(data):,} bytes ({out_path})")
