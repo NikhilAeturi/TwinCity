@@ -30,6 +30,12 @@
       <site name="mocap_target_site" size="0.01" rgba="1 1 1 1"/>
     </body>
 
+    <!-- Dynamic Mocap Target for Left Hand End-Effector -->
+    <body name="target_mocap_l" mocap="true" pos="0.35 0.2 0.9">
+      <geom type="sphere" size="0.025" rgba="0 0.8 1 0.5" contype="0" conaffinity="0"/>
+      <site name="mocap_target_site_l" size="0.01" rgba="1 1 1 1"/>
+    </body>
+
     <!-- Humanoid Robot Kinematic Tree -->
     <body name="pelvis" pos="0 0 0.98">
       <freejoint name="root_freejoint"/>

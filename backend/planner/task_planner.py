@@ -52,11 +52,83 @@ class TaskPlanner:
         has_bottle = "bottle" in cmd or "cup" in cmd or "drink" in cmd or "water" in cmd
         has_desk = "desk" in cmd or "table" in cmd
         has_shelf = "shelf" in cmd or "rack" in cmd or "cabinet" in cmd
-        has_chair = "chair" in cmd
+        has_chair = "chair" in cmd or "chairs" in cmd
+        is_furniture_arrange = (
+            "tuck" in cmd or
+            "correct position" in cmd or
+            "arrange" in cmd or
+            "align" in cmd or
+            "put chair" in cmd or
+            "put the chair" in cmd or
+            ("clean" in cmd and has_chair) or
+            ("chair" in cmd and ("position" in cmd or "table" in cmd or "under" in cmd or "order" in cmd))
+        )
 
-        # Scenario 1: Full multi-step Pick and Place (The primary benchmark task)
+        # Scenario 1: Furniture Arrangement / Tuck in Chairs (The primary requested task)
+        # e.g., "put the chairs in correct position", "tuck in the chairs", "arrange chairs"
+        if is_furniture_arrange or (has_chair and ("tuck" in cmd or "push" in cmd or "move" in cmd)):
+            # Find all chairs in the scene
+            scene_chairs = [
+                obj for obj in self.scene_config.get("objects", [])
+                if obj.get("type") == "chair" or "chair" in obj.get("id", "").lower()
+            ]
+
+            # If specific chair is targeted
+            if "chair 1" in cmd or "chair_1" in cmd or "first chair" in cmd:
+                target_chairs = [c for c in scene_chairs if "1" in c.get("id", "")]
+            elif "chair 2" in cmd or "chair_2" in cmd or "second chair" in cmd:
+                target_chairs = [c for c in scene_chairs if "2" in c.get("id", "")]
+            else:
+                target_chairs = scene_chairs
+
+            if not target_chairs:
+                # Fallback to canonical chair ids
+                target_chairs = [
+                    {"id": "chair_1", "name": "Chair #1", "target_pos": [0.95, 0.35, 0.42]},
+                    {"id": "chair_2", "name": "Chair #2", "target_pos": [1.75, -0.35, 0.42]}
+                ]
+
+            step_idx = 1
+            for chair in target_chairs:
+                cid = chair.get("id", "chair_1")
+                cname = chair.get("name", cid)
+                slot_pos = chair.get("target_pos") or [1.35, 0.0, 0.42]
+
+                plan_steps.append({
+                    "step": step_idx,
+                    "skill": "approach_chair",
+                    "params": {"target": cid, "chair": cid, "approach_pos": chair.get("approach_pos")},
+                    "description": f"Navigate humanoid behind {cname} backrest"
+                })
+                step_idx += 1
+
+                plan_steps.append({
+                    "step": step_idx,
+                    "skill": "contact_chair",
+                    "params": {"target": cid, "chair": cid},
+                    "description": f"Extend both arms and establish firm dual-palm contact with {cname} backrest"
+                })
+                step_idx += 1
+
+                plan_steps.append({
+                    "step": step_idx,
+                    "skill": "push_chair_to_slot",
+                    "params": {"target": cid, "chair": cid, "target_slot": slot_pos},
+                    "description": f"Push {cname} forward into designated table tuck-in slot"
+                })
+                step_idx += 1
+
+                plan_steps.append({
+                    "step": step_idx,
+                    "skill": "retract_arms",
+                    "params": {},
+                    "description": f"Retract arms, step back, and verify {cname} alignment"
+                })
+                step_idx += 1
+
+        # Scenario 2: Full multi-step Pick and Place (Benchmark task)
         # e.g., "walk to desk, pick up bottle, place on shelf"
-        if ("pick" in cmd or "take" in cmd or "grab" in cmd or "move" in cmd) and (has_shelf or has_desk) and has_bottle:
+        elif ("pick" in cmd or "take" in cmd or "grab" in cmd or "move" in cmd) and (has_shelf or has_desk) and has_bottle:
             desk_id = self.find_best_object_match("desk") or "desk_1"
             bottle_id = self.find_best_object_match("bottle") or "water_bottle_1"
             dest_id = self.find_best_object_match("shelf") or "shelf_1"

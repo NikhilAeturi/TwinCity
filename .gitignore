@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+*.pt
 dist/
 build/
 
@@ -20,3 +21,7 @@ Thumbs.db
 # Uploads
 backend/models/scenes/uploads/*
 !backend/models/scenes/uploads/.gitkeep
+
+# Logs
+*.log
+MUJOCO_LOG.TXT

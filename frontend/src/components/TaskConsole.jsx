@@ -3,7 +3,7 @@ import confetti from 'canvas-confetti';
 import { Send, CheckCircle2, Play, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
 
 export default function TaskConsole({ telemetry, onExecuteTask }) {
-  const [prompt, setPrompt] = useState('Walk to the desk, pick up the bottle, and place it on the shelf');
+  const [prompt, setPrompt] = useState('Put the chairs in correct position');
   const [submitting, setSubmitting] = useState(false);
 
   const task = telemetry?.task;
@@ -73,6 +73,23 @@ export default function TaskConsole({ telemetry, onExecuteTask }) {
           <button
             type="button"
             className="chip-btn"
+            style={{ borderColor: 'rgba(0, 210, 255, 0.4)', background: 'rgba(0, 210, 255, 0.1)' }}
+            onClick={() => handleChipClick('Put the chairs in correct position')}
+            id="chip-arrange-chairs"
+          >
+            🪑 Put Chairs in Correct Position
+          </button>
+          <button
+            type="button"
+            className="chip-btn"
+            onClick={() => handleChipClick('Tuck in the chairs')}
+            id="chip-tuck-chairs"
+          >
+            ✨ Tuck in Chairs
+          </button>
+          <button
+            type="button"
+            className="chip-btn"
             onClick={() => handleChipClick('Walk to the desk, pick up the bottle, and place it on the shelf')}
             id="chip-pick-and-place"
           >
@@ -84,23 +101,7 @@ export default function TaskConsole({ telemetry, onExecuteTask }) {
             onClick={() => handleChipClick('Walk to desk')}
             id="chip-walk-desk"
           >
-            🚶 Walk to Desk
-          </button>
-          <button
-            type="button"
-            className="chip-btn"
-            onClick={() => handleChipClick('Pick up the bottle')}
-            id="chip-pick-bottle"
-          >
-            🫱 Grasp Bottle
-          </button>
-          <button
-            type="button"
-            className="chip-btn"
-            onClick={() => handleChipClick('Walk to shelf')}
-            id="chip-walk-shelf"
-          >
-            📦 Navigate to Shelf
+            🚶 Walk to Table
           </button>
         </div>
       </form>

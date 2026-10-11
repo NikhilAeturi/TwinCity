@@ -73,6 +73,27 @@ class SimulationEngine:
             self.attached_object_id = None
             self.last_status_message = "Scene loaded and initialized"
 
+    def load_scene_from_dict(self, scene_config: Dict[str, Any]):
+        """Directly compiles and loads a runtime reconstructed scene into MuJoCo physics."""
+        with self.lock:
+            self.scene_config = scene_config
+            xml_str = self.builder.build_full_scene_xml(self.scene_config)
+
+            self.model = mujoco.MjModel.from_xml_string(xml_str)
+            self.data = mujoco.MjData(self.model)
+            self.robot = HumanoidRobot(self.model)
+            self.skill_executor = RobotSkillExecutor(self)
+
+            self.robot.set_home_pose(self.data)
+            mujoco.mj_forward(self.model, self.data)
+
+            self.active_task_plan = None
+            self.current_step_index = -1
+            self.task_completed = False
+            self.task_success = False
+            self.attached_object_id = None
+            self.last_status_message = "Scanned phone environment loaded into MuJoCo physics"
+
     def reset_simulation(self):
         with self.lock:
             mujoco.mj_resetData(self.model, self.data)
@@ -143,6 +164,10 @@ class SimulationEngine:
     def detach_object(self, object_id: str):
         if self.attached_object_id == object_id:
             self.attached_object_id = None
+
+    def set_object_position(self, object_id: str, pos: np.ndarray):
+        """Sets the 3D position of a freejoint movable object."""
+        self._set_freejoint_body_pos(object_id, pos)
 
     def _set_freejoint_body_pos(self, body_name: str, pos: np.ndarray):
         bid = self.robot.body_map.get(body_name, -1)
@@ -225,23 +250,33 @@ class SimulationEngine:
                         "quat": self.data.xquat[bid].tolist()
                     }
 
-            # Interactive Objects poses
+            # Interactive Objects poses & layout attributes
             objects_state = {}
             for obj in self.scene_config.get("objects", []):
                 oid = obj.get("id")
+                base_info = {
+                    "id": oid,
+                    "name": obj.get("name", oid),
+                    "type": obj.get("type", "object"),
+                    "geometry": obj.get("geometry", "box"),
+                    "size": obj.get("size", [0.1, 0.1, 0.1]),
+                    "color": obj.get("color", [0.7, 0.7, 0.7, 1.0]),
+                    "surface_height": obj.get("surface_height"),
+                    "slots": obj.get("slots", []),
+                    "target_pos": obj.get("target_pos"),
+                    "target_slot_id": obj.get("target_slot_id"),
+                    "status": obj.get("status", "default"),
+                    "movable": obj.get("movable", False)
+                }
                 if oid in self.robot.body_map:
                     bid = self.robot.body_map[oid]
-                    objects_state[oid] = {
-                        "pos": self.data.xpos[bid].tolist(),
-                        "quat": self.data.xquat[bid].tolist(),
-                        "movable": obj.get("movable", False)
-                    }
+                    base_info["pos"] = self.data.xpos[bid].tolist()
+                    base_info["quat"] = self.data.xquat[bid].tolist()
                 else:
-                    objects_state[oid] = {
-                        "pos": obj.get("position", [0, 0, 0]),
-                        "quat": [1, 0, 0, 0],
-                        "movable": False
-                    }
+                    base_info["pos"] = obj.get("position", [0, 0, 0])
+                    base_info["quat"] = [1, 0, 0, 0]
+
+                objects_state[oid] = base_info
 
             # Hand positions & contact
             r_hand_pos = self.robot.get_site_position(self.data, "right_hand").tolist()
