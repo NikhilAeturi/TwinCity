@@ -27,7 +27,7 @@ FRONTEND_PID=$!
 
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true; exit" SIGINT SIGTERM
 
-echo ">> RoboTwin Simulator is LIVE!"
+echo ">> TwinCity Simulator is LIVE!"
 echo ">> Access the Dashboard: http://127.0.0.1:5173"
 echo ">> Backend REST & WebSockets: http://127.0.0.1:8000"
 echo ">> Press Ctrl+C to stop all services."

@@ -1,61 +1,77 @@
-# RoboTwin: Physics-Based Humanoid Robotics Simulator
-> **"Real World In, Humanoid Robot Out"**
+# TwinCity: Movie Directing & Cinematic Shot Simulator
+> **"Direct Scenes, Plan Camera Rails & Simulate Film Shots in Photorealistic 3D Digital Twin Cities"**
+>
+> 🏆 **1st Place Winner at HackRU (Rutgers Hackathon)!**
 
-RoboTwin is an open-source, physics-grounded humanoid robotics simulator designed to bridge real-world physical environments captured on mobile devices (Polycam, photogrammetry, LiDAR scans) with high-fidelity articulated humanoid robot simulation in **MuJoCo** and interactive web-based 3D visualization in **Three.js**.
+TwinCity transforms real-world cities into an interactive, physics-grounded virtual movie studio. Instead of spending millions of dollars closing down metropolitan streets, wrecking practical stunt cars, or hiring helicopter crews to test camera angles, directors and creators can stage multi-actor action scenes, choreograph vehicle chases, draw custom 3D camera flight rails, and simulate cinematic shots right inside their browser.
 
 ---
 
 ## 🌟 Key Capabilities
 
-1. **Two-Layer Environment Model**:
-   - **Visual Layer**: High-detail room scan mesh (e.g. Polycam GLTF/OBJ export) rendered in Three.js with realistic materials.
-   - **Physics Layer**: Fast, stable collision primitives (`box`, `cylinder`, `plane`) compiled dynamically into MuJoCo MJCF XML for real-time contact dynamics without mesh tunneling or lag.
-2. **29-DoF Articulated Humanoid Robot**:
-   - Inspired by Google DeepMind's **MuJoCo Menagerie** (`unitree_h1` & `unitree_g1`).
-   - Complete kinematic tree: Pelvis root with 6-DoF freejoint, 2-DoF spine torso, 2-DoF sensor head, 7-DoF arms with parallel-jaw grippers, and 12-DoF lower body.
-3. **Motion Planning & Damped Least-Squares (DLS) Inverse Kinematics**:
-   - Utilizes MuJoCo's analytical Jacobian ($\Delta q = J^T (J J^T + \lambda^2 I)^{-1} e$) for end-effector reaching and target tracking.
-   - Real friction contact confirmation when grasping objects.
-4. **SayCan-Style AI Task Planner**:
-   - Translates natural language commands (*"Walk to the desk, pick up the bottle, and place it on the shelf"*) into grounded, verifiable action sequences (`walk_to`, `reach`, `grasp`, `lift`, `carry_to`, `place_on`, `release`).
-5. **Real-Time 30 FPS Telemetry Stream & 3D Web Dashboard**:
-   - FastAPI WebSocket backend streaming joint coordinates, object poses, and contact forces.
-   - Aesthetic dark-mode Three.js dashboard with orbit controls, camera focus presets, live collision wireframe toggling, and object coordinate fine-tuning.
+### 1. 🏙️ Real-World 3D Digital Twin Sets
+- **Global Photorealistic Sets**: Drop onto any real-world street corner—from the hills of San Francisco to the skyline of Manhattan or the districts of Tokyo.
+- **Accurate Geospatial Stages**: 0.25-mile radius staging areas with photogrammetry mesh elevation, street layouts, and real architectural landmarks.
+
+### 2. 🏎️ 3D Model Catalog & Dynamic Physics Staging
+- **High-Fidelity Vehicles**: Supercars, tactical SUVs, executive sedans, police interceptors, and transport trucks with realistic vehicle dynamics (Ackermann steering, momentum, braking deceleration, body roll, and crash deformation).
+- **Drones & Aerial Vehicles**: Agile quadcopters capable of swooping low through traffic or sweeping overhead.
+- **Articulated Stunt Doubles**: Humanoid models with motion-captured choreography (walk, jog, crouch, scan, wave, celebrate, drop).
+- **Set Props**: Traffic barriers, cones, streetlights, delivery crates, and impact debris clusters.
+
+### 3. 🎥 Pencil Path & Camera Rail Director
+- **3D Airspace Flight Rails**: Use an intuitive pencil tool to click and draw smooth 3D camera paths directly in the sky above the city.
+- **Catmull-Rom Spline Interpolation**: Camera trajectories are smoothed into cinematic flight curves with adjustable altitude presets (Curb: 4m, Street: 14m, Crane: 28m, Aerial: 55m).
+- **Intelligent Tracking Optics**:
+  - 🎯 **Lock on Action Center**: Keeps the camera lens centered on the core stunt or crash impact point.
+  - 🏎️ **Chase Lead Actor**: Dynamically follows a speeding vehicle or drone from behind or alongside.
+  - 🧭 **Look Forward along Rail**: Tangent lookahead aligned with camera flight velocity.
+  - 📍 **Target Focus**: Locks onto secondary targets or destination landmarks.
+
+### 4. 🤖 AI Natural Language Screenplay Choreographer
+- Describe any action scene in plain English (*"A sports car speeds around the corner while an SUV swerves and a drone sweeps overhead"*).
+- The AI scene director parses the script, stages the models, calculates realistic speeds, distances, and timing, and generates the choreography automatically.
+
+### 5. 🎬 60 FPS In-Browser Recording & Direct MP4 Export
+- Capture and preview scenes in real time with free camera navigation or directed camera rails.
+- Export production-ready **1080p 60 FPS MP4** videos and synchronized telemetry datasets directly from the browser canvas.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
 ```
-                       📱 Phone 3D Scan (Polycam / LiDAR)
-                                     │
-                 ┌───────────────────┴───────────────────┐
-                 ▼                                       ▼
-        [Visual Scan Mesh]                      [Physics Primitives]
-        (Three.js Viewport)                     (MuJoCo MJCF XML)
-                 │                                       │
-                 │                                       ▼
-                 │                          ┌──────────────────────────┐
-                 │                          │   MuJoCo Physics Core    │
-                 │                          │   - 29-DoF Humanoid      │
-                 │                          │   - DLS Jacobian IK      │
-                 │                          │   - Contact Grasping     │
-                 │                          │   - Walking Locomotion   │
-                 │                          └────────────┬─────────────┘
-                 │                                       │
-                 ▼                                       ▼
-     ┌────────────────────────────────────────────────────────┐
-     │           FastAPI Server & WebSocket Stream            │
-     └──────────────────────────┬─────────────────────────────┘
-                                │
-                                ▼
-     ┌────────────────────────────────────────────────────────┐
-     │            RoboTwin 3D Web Dashboard                   │
-     │            - Three.js WebGL Viewport                   │
-     │            - SayCan AI Task Planner Console            │
-     │            - 2-Layer Scene Manager & Upload            │
-     │            - 500Hz MuJoCo Telemetry Panel              │
-     └────────────────────────────────────────────────────────┘
+                       🌍 Geospatial Digital Twin (Google 3D Tiles)
+                                      │
+                  ┌───────────────────┴───────────────────┐
+                  ▼                                       ▼
+         [Photorealistic 3D Mesh]                [Geospatial ENU Stage]
+          (Three.js / WebGL View)                 (Elevation & Bounds)
+                  │                                       │
+                  │                                       ▼
+                  │                          ┌──────────────────────────┐
+                  │                          │  TwinCity Physics Core   │
+                  │                          │  - Vehicle Dynamics      │
+                  │                          │  - Catmull-Rom Rails     │
+                  │                          │  - Contact & Collisions  │
+                  │                          │  - Humanoid Locomotion   │
+                  │                          └────────────┬─────────────┘
+                  │                                       │
+                  ▼                                       ▼
+      ┌────────────────────────────────────────────────────────┐
+      │           FastAPI Server & WebSocket Stream            │
+      │           - REST Endpoints & Screenplay Director       │
+      │           - 60Hz Telemetry & Vehicle Pose Streaming    │
+      └──────────────────────────┬─────────────────────────────┘
+                                 │
+                                 ▼
+      ┌────────────────────────────────────────────────────────┐
+      │              TwinCity 3D Director Studio               │
+      │              - 3D City Viewport & Asset Stager         │
+      │              - Pencil Path & Camera Rail Director      │
+      │              - Screenplay Natural Language Bar         │
+      │              - In-Browser 60 FPS MP4 Video Recorder    │
+      └────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -64,23 +80,23 @@ RoboTwin is an open-source, physics-grounded humanoid robotics simulator designe
 
 ### 1. Prerequisites
 - **Python**: 3.10+ (tested on Python 3.11)
-- **Node.js**: 18+ (tested on Node v20.18)
+- **Node.js**: 18+ (tested on Node v20+)
 
 ### 2. Launch with One Command
 ```bash
 ./start.sh
 ```
-This script automatically:
-1. Activates the Python virtual environment.
-2. Starts the FastAPI MuJoCo backend server on `http://127.0.0.1:8000`.
-3. Starts the Vite 3D dashboard on `http://127.0.0.1:5173`.
+This automatically:
+1. Activates the Python virtual environment (`.venv`).
+2. Starts the **FastAPI Physics & Director Backend** on `http://127.0.0.1:8000`.
+3. Starts the **Vite 3D Web Studio** on `http://127.0.0.1:5173`.
 
 ### 3. Manual Startup
 
 **Backend**:
 ```bash
 source .venv/bin/activate
-uvicorn backend.app:app --host 127.0.0.1 --port 8000
+uvicorn backend.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
 **Frontend**:
@@ -90,67 +106,55 @@ npm install
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173` in your browser.
-
----
-
-## 🎮 Benchmark Demonstration
-
-In the dashboard, click **"Benchmark: Pick & Place Bottle"** or enter:
-> *"Walk to the desk, pick up the bottle, and place it on the shelf"*
-
-Observe:
-1. **Navigation**: Humanoid walks across the room to the work desk using an articulated bipedal stepping cycle.
-2. **IK Approach**: Right arm calculates Jacobian IK and smoothly reaches toward the water bottle.
-3. **Contact Grasp**: Parallel gripper fingers close around the bottle and verify physical contact.
-4. **Lift**: Object is lifted 22cm above the desk surface.
-5. **Transport**: Humanoid carries the bottle across the room to the storage shelf.
-6. **Placement & Release**: Object is positioned above the top shelf surface, gripper releases, and bottle settles under gravity.
+Open `http://127.0.0.1:5173` in your browser to begin directing.
 
 ---
 
 ## 📁 Repository Structure
 
 ```
-RoboTwin/
+TwinCity/
 ├── backend/
-│   ├── app.py                     # FastAPI REST API & WebSocket server
-│   ├── requirements.txt           # Python dependencies
+│   ├── app.py                         # FastAPI REST API & WebSocket server
+│   ├── requirements.txt               # Python backend dependencies
 │   ├── simulation/
-│   │   ├── engine.py              # MuJoCo Physics loop & state manager
-│   │   ├── robot_model.py         # Humanoid kinematic tree & actuators
-│   │   ├── ik_solver.py           # Damped Least-Squares Jacobian IK
-│   │   ├── locomotion.py          # Walking gait & navigation controller
-│   │   └── scene_builder.py       # Two-layer environment compiler
+│   │   ├── camera_director.py         # Catmull-Rom spline camera rail director
+│   │   ├── screenplay_physics.py      # Multi-vehicle stunt & screenplay kinematics
+│   │   ├── asset_catalog.py           # 3D models & physical properties catalog
+│   │   ├── stunt_physics.py           # Impact dynamics & trajectory simulation
+│   │   ├── stunt_locations.py         # Global geospatial city preset locations
+│   │   ├── city_models.py             # 3D city architectural stage models
+│   │   ├── locomotion.py              # Humanoid walking & action controllers
+│   │   └── engine.py                  # Physics state integration loop
 │   ├── planner/
-│   │   ├── task_planner.py        # SayCan AI task planner & affordance checker
-│   │   └── skills.py              # Atomic skill state machine
+│   │   ├── scene_director.py          # AI screenplay-to-scene choreography
+│   │   └── task_planner.py            # Natural language command interpreter
 │   └── models/
-│       ├── robot/
-│       │   └── humanoid.xml       # High-fidelity 29-DoF MJCF model
-│       └── scenes/
-│           └── default_room.json  # Scanned room scene registry
+│       ├── robot/                     # Humanoid MJCF models & generators
+│       └── scenes/                    # Scene configurations & uploads
 ├── frontend/
-│   ├── index.html                 # HTML shell with Google Fonts
+│   ├── index.html                     # Studio HTML shell & typography
 │   ├── package.json
 │   ├── vite.config.js
 │   └── src/
-│       ├── App.jsx                # Main interface & WebSocket listener
-│       ├── index.css              # Cyber-robotics dark CSS design system
+│       ├── App.jsx                    # Root studio container & error boundary
+│       ├── index.css                  # Studio dark theme & design tokens
 │       └── components/
-│           ├── Viewport3D.jsx     # Three.js 3D Viewport & robot renderer
-│           ├── TaskConsole.jsx    # Natural language command bar & pipeline
-│           ├── SceneManager.jsx   # Phone scan upload & 2-layer inspector
-│           └── TelemetryPanel.jsx # 500Hz physics metrics & coordinates
-├── start.sh                       # One-click startup script
+│           ├── StuntStudio.jsx        # Main Director Studio orchestration
+│           ├── CityViewport.jsx       # 3D City WebGL environment viewport
+│           ├── DirectorStudioPanel.jsx# Unified scene generation & camera controls
+│           ├── PencilPathDirector.jsx # Custom waypoint & action director
+│           ├── CameraRailDirector.jsx # 3D camera spline rail controls
+│           ├── ModelsDirectorPanel.jsx# 3D asset, vehicle, and prop catalog
+│           └── Model3DStudioViewer.jsx# Interactive 3D asset previewer
+├── start.sh                           # One-click startup script
 └── README.md
 ```
 
 ---
 
-## 📜 Open Source Citations & References
-- **MuJoCo**: [google-deepmind/mujoco](https://github.com/google-deepmind/mujoco)
-- **MuJoCo Menagerie**: [google-deepmind/mujoco_menagerie](https://github.com/google-deepmind/mujoco_menagerie)
-- **SayCan**: [google-research/saycan](https://github.com/google-research/google-research/tree/master/saycan)
-- **Viser**: [viser-project/viser](https://github.com/viser-project/viser)
-- **CoACD / V-HACD**: [SarahWeiii/CoACD](https://github.com/SarahWeiii/CoACD) & [obj2mjcf](https://github.com/kevinzakka/obj2mjcf)
+## 🏆 Acknowledgments & Tech Stack
+- **Google Photorealistic 3D Tiles** & Three.js for 3D geospatial environments
+- **FastAPI & Uvicorn** for real-time kinematics and WebSocket streaming
+- **MuJoCo & SciPy** for rigid-body physics, vehicle dynamics, and spline mathematics
+- Built and awarded **1st Place at Rutgers HackRU** 🎬
