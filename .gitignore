@@ -8,6 +8,9 @@ venv/
 *.pt
 dist/
 build/
+.env
+.env.*
+*.env
 
 # Node
 node_modules/
